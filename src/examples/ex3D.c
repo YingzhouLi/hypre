@@ -56,52 +56,36 @@
   #define PI 3.14159265358979
 #endif
 
-#include "vis.c"
-
 /* Macro to evaluate a function F in the grid point (i,j) */
-#define Eval(F,i,j,k) (F( (ilower[0]+(i))*h, (ilower[1]+(j))*h, (ilower[2]+(k))*h ))
-#define bcEval(F,i,j,k) (F( (bc_ilower[0]+(i))*h, (bc_ilower[1]+(j))*h, (bc_ilower[2]+(k))*h ))
+#define Eval(F,i,j,k) (F( (ilower[0]+(i))*h, (ilower[1]+(j))*h, (ilower[2]+(k))*h, h ))
+#define bcEval(F,i,j,k) (F( (bc_ilower[0]+(i))*h, (bc_ilower[1]+(j))*h, (bc_ilower[2]+(k))*h, h ))
 
 int optionK;
 
 /* Diffusion coefficient */
-double K(double x, double y, double z)
+double K(double x, double y, double z, double h)
 {
-   switch (optionK)
-   {
-      case 0:
-         return 1.0;
-      case 1:
-         return x*x+exp(y);
-      case 2:
-         if ((fabs(x-0.5) < 0.25) && (fabs(y-0.5) < 0.25))
-            return 100.0;
-         else
-            return 1.0;
-      case 3:
-         if (((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)) < 0.0625)
-            return 10.0;
-         else
-            return 1.0;
-      default:
-         return 1.0;
-   }
+    int piece = (int)floor(1./7./h);
+    if ((int)(floor(x*piece)+floor(y*piece)+floor(z*piece)) % 2 == 1)
+        return 1000.0;
+    else
+        return 0.1;
 }
 
 /* Reaction coefficient */
-double C(double x, double y, double z)
+double C(double x, double y, double z, double h)
 {
     return 0.1;
 }
 
 /* Boundary condition */
-double U0(double x, double y, double z)
+double U0(double x, double y, double z, double h)
 {
     return 0.0;
 }
 
 /* Right-hand side */
-double F(double x, double y, double z)
+double F(double x, double y, double z, double h)
 {
     return 2*PI*PI*PI*sin(PI*x)*sin(PI*y)*sin(PI*z);
 }
@@ -118,7 +102,6 @@ int main (int argc, char *argv[])
    int ilower[3], iupper[3];
 
    int n_pre, n_post;
-   int rap, relax, skip;
    int time_index;
 
    int num_iterations;
@@ -142,9 +125,6 @@ int main (int argc, char *argv[])
    optionK   = 0;
    n_pre     = 1;
    n_post    = 1;
-   rap       = 0;
-   relax     = 1;
-   skip      = 0;
 
    /* Parse command line */
    {
@@ -169,21 +149,6 @@ int main (int argc, char *argv[])
             n_pre = atoi(argv[arg_index++]);
             n_post = atoi(argv[arg_index++]);
          }
-         else if ( strcmp(argv[arg_index], "-rap") == 0 )
-         {
-            arg_index++;
-            rap = atoi(argv[arg_index++]);
-         }
-         else if ( strcmp(argv[arg_index], "-relax") == 0 )
-         {
-            arg_index++;
-            relax = atoi(argv[arg_index++]);
-         }
-         else if ( strcmp(argv[arg_index], "-skip") == 0 )
-         {
-            arg_index++;
-            skip = atoi(argv[arg_index++]);
-         }
          else if ( strcmp(argv[arg_index], "-help") == 0 )
          {
             print_usage = 1;
@@ -203,16 +168,6 @@ int main (int argc, char *argv[])
          printf("  -n  <n>             : problem size per processor (default: 8)\n");
          printf("  -K  <K>             : choice for the diffusion coefficient (default: 1)\n");
          printf("  -v <n_pre> <n_post> : number of pre and post relaxations\n");
-         printf("  -rap <r>            : coarse grid operator type\n");
-         printf("                        0 - Galerkin (default)\n");
-         printf("                        1 - non-Galerkin ParFlow operators\n");
-         printf("                        2 - Galerkin, general operators\n");
-         printf("  -relax <r>          : relaxation type\n");
-         printf("                        0 - Jacobi\n");
-         printf("                        1 - Weighted Jacobi (default)\n");
-         printf("                        2 - R/B Gauss-Seidel\n");
-         printf("                        3 - R/B Gauss-Seidel (nonsymmetric)\n");
-         printf("  -skip <s>           : skip levels in PFMG (0 or 1)\n");
          printf("\n");
       }
 
@@ -279,7 +234,7 @@ int main (int argc, char *argv[])
       HYPRE_StructVectorInitialize(b);
       HYPRE_StructVectorInitialize(x);
 
-      values = (double*) calloc((n*n), sizeof(double));
+      values = (double*) calloc((n*n*n), sizeof(double));
 
       /* Set the values of b in left-to-right, bottom-to-top order */
       it = 0;
