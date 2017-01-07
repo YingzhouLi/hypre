@@ -496,9 +496,9 @@ int main (int argc, char *argv[])
          Note that one could declare the solver to be
          type HYPRE_Solver, and then the casting would not be necessary.*/
 
-      HYPRE_GMRESSetMaxIter((HYPRE_Solver) solver, 500 );
+      HYPRE_GMRESSetMaxIter((HYPRE_Solver) solver, 3000 );
       HYPRE_GMRESSetKDim((HYPRE_Solver) solver,30);
-      HYPRE_GMRESSetTol((HYPRE_Solver) solver, 1.0e-06 );
+      HYPRE_GMRESSetTol((HYPRE_Solver) solver, 1.0e-12 );
       HYPRE_GMRESSetPrintLevel((HYPRE_Solver) solver, 2 );
       HYPRE_GMRESSetLogging((HYPRE_Solver) solver, 1 );
 
